@@ -1,0 +1,11 @@
+[project]
+name = "checkmark"
+version = "0.1.0"
+description = "A simple CLI for tracking progress with markdown checklists"
+authors = [
+  { name = "menisadi", email = "menisadi@gmail.com" }
+]
+dependencies = []
+
+[project.scripts]
+checkmark = "checkmark.cli:main"
