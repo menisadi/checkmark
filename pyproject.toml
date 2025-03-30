@@ -1,5 +1,5 @@
 [project]
-name = "checkmark"
+name = "checkmarks"
 version = "0.1.0"
 description = "A simple CLI for tracking progress with markdown checklists"
 authors = [
@@ -16,4 +16,4 @@ keywords = ["cli", "markdown", "checklists"]
 dependencies = []
 
 [project.scripts]
-checkmark = "checkmark.cli:main"
+checkmarks = "checkmarks.cli:main"
