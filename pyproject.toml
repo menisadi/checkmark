@@ -7,7 +7,6 @@ authors = [
 ]
 
 readme = "README.md"
-readme-content-type = "text/markdown"
 
 license = { file = "LICENSE" }
 
