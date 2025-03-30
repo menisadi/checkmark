@@ -11,14 +11,25 @@ A simple command-line tool to check the progress of tasks in a Markdown checklis
 
 ## Installation
 
+### Option 1: Install via PyPI (Recommended)
+```bash
+pip install checkmarks
+```
+
+### Option 2: Install from source
+
 1. Make sure you have Python 3.7+ installed.
 2. Clone or download this repository.
-
+```bash
+git clone https://github.com/menisadi/checkmarks.git
+cd checkmarks
+pip install .
+```
 
 ## Usage
 
 ```bash
-python checkmarks.py /path/to/your_checklist.md
+checkmarks /path/to/your_checklist.md
 ```
 
 ## Example
@@ -33,6 +44,7 @@ Suppose you have a file named todo.md with the following content:
 ```
 
 Running python checkmarks.py todo.md will produce output like:
+
 ```
 📊 Progress for:
 My Todo List
