@@ -48,7 +48,7 @@ Running python checkmarks.py todo.md will produce output like:
 ```
 📊 Progress for:
 My Todo List
-[█-------] 1/3 tasks completed (33.3%)
+[███------] 1/3 tasks completed (33.3%)
 ```
 
 ## Contributing
