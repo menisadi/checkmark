@@ -1,4 +1,4 @@
-# Checkmark
+# Checkmarks
 
 A simple command-line tool to check the progress of tasks in a Markdown checklist. It scans a `.md` file for checklist items (of the form `- [ ]` and `- [x]`) and displays a progress bar.
 
@@ -13,14 +13,12 @@ A simple command-line tool to check the progress of tasks in a Markdown checklis
 
 1. Make sure you have Python 3.7+ installed.
 2. Clone or download this repository.
-3. (Optional) Install dependencies in a virtual environment if desired.
 
-There are no additional external dependencies besides Python's standard library.
 
 ## Usage
 
 ```bash
-python checkmark.py /path/to/your_checklist.md
+python checkmarks.py /path/to/your_checklist.md
 ```
 
 ## Example
@@ -34,7 +32,7 @@ Suppose you have a file named todo.md with the following content:
 - [ ] Go running
 ```
 
-Running python checkmark.py todo.md will produce output like:
+Running python checkmarks.py todo.md will produce output like:
 ```
 📊 Progress for:
 My Todo List
