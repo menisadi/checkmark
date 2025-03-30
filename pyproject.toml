@@ -16,3 +16,7 @@ dependencies = []
 
 [project.scripts]
 checkmarks = "checkmarks.cli:main"
+
+[project.urls]
+"Homepage" = "https://github.com/menisadi/checkmarks"
+"Issues" = "https://github.com/menisadi/checkmarks/issues"
