@@ -3,28 +3,21 @@
 checkmarks - A tool to parse Markdown task lists and display progress.
 
 Usage:
-  python checkmarks.py parse /path/to/file.md
-  python checkmarks.py add /path/to/file.md
+  python checkmarks.py            # No parameters => Show dashboard
+  python checkmarks.py file.md    # Single parameter (markdown file) => Parse file
+  python checkmarks.py parse file.md
+  python checkmarks.py add file.md
+  python checkmarks.py remove file.md
   python checkmarks.py dashboard [--table | --progress]
   python checkmarks.py export /path/to/output.html
   python checkmarks.py scan /path/to/directory
-
-Commands:
-- parse: Parse a single Markdown file and display a simple progress bar + title.
-- add:   Add a Markdown file to the dashboard's tracked list (stored in config).
-- dashboard:
-    - No flags: Display each tracked file with a simple ASCII progress bar
-    - --table: Show a Rich table (requires `rich` installed)
-    - --progress: Show animated Rich progress bars (requires `rich` installed)
-- export: Export the current dashboard to an HTML file
-- scan:   Recursively find .md files in a directory that contain tasks
-          and interactively add them to the tracked list.
 """
 
 import argparse
 import os
 import re
 import json
+import sys
 from typing import List, Tuple
 
 # If "rich" is installed, we can do fancy progress bars/tables.
@@ -44,7 +37,6 @@ CONFIG_FILENAME = os.path.expanduser("~/.checkmarks_config.json")
 def load_dashboard_config() -> List[str]:
     """
     Load the list of tracked files from the global configuration file.
-
     Returns:
         A list of file paths being tracked.
     """
@@ -62,7 +54,6 @@ def load_dashboard_config() -> List[str]:
 def save_dashboard_config(tracked_files: List[str]) -> None:
     """
     Save the list of tracked files to the global configuration file.
-
     Args:
         tracked_files: List of file paths to be saved.
     """
@@ -79,7 +70,6 @@ def parse_markdown_tasks(file_path: str) -> Tuple[int, int]:
 
     Args:
         file_path: Path to the Markdown file.
-
     Returns:
         A tuple (completed_count, total_count).
     """
@@ -109,7 +99,6 @@ def parse_markdown_title(file_path: str) -> str:
 
     Args:
         file_path: Path to the Markdown file.
-
     Returns:
         The Markdown file's title or the file's basename if no title found.
     """
@@ -127,9 +116,7 @@ def parse_markdown_title(file_path: str) -> str:
     return os.path.basename(file_path)
 
 
-def print_simple_progress_bar(
-    completed: int, total: int, width: int = 30
-) -> None:
+def print_simple_progress_bar(completed: int, total: int, width: int = 30) -> None:
     """
     Print a simple ASCII progress bar to the terminal.
 
@@ -178,6 +165,22 @@ def cmd_add_file(file_path: str) -> None:
         print(f"'{file_path}' is already in the dashboard.")
 
 
+def cmd_remove_file(file_path: str) -> None:
+    """
+    Remove a Markdown file from the dashboard configuration.
+
+    Args:
+        file_path: The Markdown file path to remove.
+    """
+    tracked_files = load_dashboard_config()
+    if file_path in tracked_files:
+        tracked_files.remove(file_path)
+        save_dashboard_config(tracked_files)
+        print(f"Removed '{file_path}' from the dashboard.")
+    else:
+        print(f"'{file_path}' is not in the dashboard.")
+
+
 def generate_dashboard_data(
     tracked_files: List[str],
 ) -> List[Tuple[str, int, int, str]]:
@@ -198,9 +201,7 @@ def generate_dashboard_data(
     return dashboard_data
 
 
-def cmd_dashboard(
-    table_view: bool = False, progress_view: bool = False
-) -> None:
+def cmd_dashboard(table_view: bool = False, progress_view: bool = False) -> None:
     """
     Show the dashboard of all tracked files.
 
@@ -210,15 +211,11 @@ def cmd_dashboard(
     """
     tracked_files = load_dashboard_config()
     if not tracked_files:
-        print(
-            "No files are being tracked yet. Use 'add' command to add files."
-        )
+        print("No files are being tracked yet. Use 'add' command to add files.")
         return
 
-    # Each entry is (title, completed, total, file_path)
     dashboard_data = generate_dashboard_data(tracked_files)
 
-    # If rich is not available, fallback to simple prints
     if RICH_AVAILABLE and table_view:
         print_dashboard_as_table(dashboard_data)
     elif RICH_AVAILABLE and progress_view:
@@ -258,9 +255,7 @@ def print_dashboard_as_table(
             fill_len = int(ratio * bar_length)
             progress_str = "#" * fill_len + "-" * (bar_length - fill_len)
 
-        table.add_row(
-            title, str(completed), str(total), f"{progress_str} {ratio_str}"
-        )
+        table.add_row(title, str(completed), str(total), f"{progress_str} {ratio_str}")
 
     console.print(table)
 
@@ -376,34 +371,33 @@ def cmd_scan_directory(directory: str) -> None:
 
 
 def main() -> None:
-    """
-    Entry point for the checkmarks CLI application.
-    """
     parser = argparse.ArgumentParser(
         description="checkmarks - Parse Markdown task lists and display progress."
     )
+
+    # Create subparsers, but do NOT force them to be required
     subparsers = parser.add_subparsers(dest="command")
 
-    # parse command
-    parse_parser = subparsers.add_parser(
-        "parse", help="Parse a single Markdown file."
-    )
+    # 'parse' subcommand
+    parse_parser = subparsers.add_parser("parse", help="Parse a single Markdown file.")
     parse_parser.add_argument("file", type=str, help="Path to a Markdown file")
 
-    # add command
+    # 'add' subcommand
     add_parser = subparsers.add_parser(
         "add", help="Add a Markdown file to the dashboard."
     )
     add_parser.add_argument("file", type=str, help="Path to a Markdown file")
 
-    # dashboard command
-    dash_parser = subparsers.add_parser(
-        "dashboard", help="Show the dashboard."
+    # 'remove' subcommand
+    remove_parser = subparsers.add_parser(
+        "remove", help="Remove a Markdown file from the dashboard."
     )
+    remove_parser.add_argument("file", type=str, help="Path to a Markdown file")
+
+    # 'dashboard' subcommand
+    dash_parser = subparsers.add_parser("dashboard", help="Show the dashboard.")
     dash_parser.add_argument(
-        "--table",
-        action="store_true",
-        help="Display as a Rich table (requires rich).",
+        "--table", action="store_true", help="Display as a Rich table (requires rich)."
     )
     dash_parser.add_argument(
         "--progress",
@@ -411,26 +405,47 @@ def main() -> None:
         help="Display as Rich progress bars (requires rich).",
     )
 
-    # export command
+    # 'export' subcommand
     export_parser = subparsers.add_parser(
         "export", help="Export the dashboard to HTML."
     )
-    export_parser.add_argument(
-        "output", type=str, help="Output HTML file path"
-    )
+    export_parser.add_argument("output", type=str, help="Output HTML file path")
 
-    # scan command
+    # 'scan' subcommand
     scan_parser = subparsers.add_parser(
-        "scan", help="Scan a directory for Markdown files with tasks."
+        "scan", help="Scan a directory for Markdown files."
     )
     scan_parser.add_argument("directory", type=str, help="Directory path")
 
+    # ---------------------------------------------------------------------
+    # Intercept the special "no-arguments" and "single .md file" cases here
+    #   *AFTER* defining the parser, so that --help is still recognized.
+    # ---------------------------------------------------------------------
+
+    # Case 1) No arguments => show the dashboard
+    if len(sys.argv) == 1:
+        cmd_dashboard()
+        return
+
+    # Case 2) Exactly one argument => if it’s a local .md file, parse it
+    if len(sys.argv) == 2:
+        single_arg = sys.argv[1]
+        if single_arg.lower().endswith(".md") and os.path.isfile(single_arg):
+            cmd_parse_file(single_arg)
+            return
+
+    # ---------------------------------------------------------------------
+    # Otherwise, parse normally (this ensures `--help` works).
+    # ---------------------------------------------------------------------
     args = parser.parse_args()
 
+    # Dispatch subcommands
     if args.command == "parse":
         cmd_parse_file(args.file)
     elif args.command == "add":
         cmd_add_file(args.file)
+    elif args.command == "remove":
+        cmd_remove_file(args.file)
     elif args.command == "dashboard":
         cmd_dashboard(args.table, args.progress)
     elif args.command == "export":
