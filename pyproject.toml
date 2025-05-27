@@ -1,10 +1,11 @@
 [project]
 name = "checkmarks"
-version = "0.1.0"
+version = "0.2.0"
 description = "A simple CLI for tracking progress with markdown checklists"
 authors = [
   { name = "menisadi", email = "menisadi@gmail.com" }
 ]
+requires-python = ">=3.10"
 
 readme = "README.md"
 
@@ -12,7 +13,9 @@ license = { file = "LICENSE" }
 
 keywords = ["cli", "markdown", "checklists"]
 
-dependencies = []
+dependencies = [
+  "rich>=13.0.0",
+]
 
 [project.scripts]
 checkmarks = "checkmarks.cli:main"

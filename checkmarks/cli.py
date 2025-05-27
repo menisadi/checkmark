@@ -1,58 +1,121 @@
+"""Argparse-based CLI entry-point for *checkmarks*."""
+
+from __future__ import annotations
+
 import argparse
-import re
+import math
 from pathlib import Path
+from typing import NoReturn
+
+from checkmarks.core import (
+    ChecklistManager,
+    parse_markdown_tasks,
+    parse_markdown_title,
+    build_stats,
+)
+
+__all__ = ["main"]
 
 
-def parse_checklist(file_path: Path) -> tuple[int, int, str | None]:
-    """Parses a markdown checklist file and returns task counts and optional title."""
-    with file_path.open("r", encoding="utf-8") as f:
-        content = f.read()
+# ─────────────────────────────────────────────────────────────────────────────
+# helpers
+# ─────────────────────────────────────────────────────────────────────────────
 
-    # Find all checklist items
-    all_tasks: list[str] = re.findall(r"- \[( |x)\] ", content)
-    total: int = len(all_tasks)
-    done: int = sum(1 for t in all_tasks if t == "x")
-
-    # Try to extract the first level-1 heading as the title
-    title_match = re.search(r"^# (.+)", content, re.MULTILINE)
-    title: str | None = title_match.group(1).strip() if title_match else None
-
-    return done, total, title
+_BAR_WIDTH = 20
 
 
-def show_progress(
-    done: int, total: int, title: str | None = None, bar_length: int = 40
-) -> None:
-    """Displays a progress bar in the terminal, optionally with a custom title."""
-    percent: float = (done / total) * 100 if total else 0
-    filled_length: int = int(bar_length * done // total) if total else 0
-    bar: str = "█" * filled_length + "-" * (bar_length - filled_length)
-
-    heading: str = (
-        f"📊 Progress for:\n{title}" if title else "📊 Checklist Progress"
-    )
-    print(f"\n{heading}")
-    print(f"[{bar}] {done}/{total} tasks completed ({percent:.1f}%)\n")
+def _ascii_bar(completed: int, total: int) -> str:
+    """Return a simple ASCII progress bar like ``[####------] 40%``."""
+    if total == 0:
+        return "[{}] n/a".format("-" * _BAR_WIDTH)
+    ratio = completed / total
+    filled = math.floor(ratio * _BAR_WIDTH)
+    bar = "#" * filled + "-" * (_BAR_WIDTH - filled)
+    return f"[{bar}] {ratio * 100:5.1f}%"
 
 
-def main() -> None:
-    """Main entry point for the CLI."""
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Track Markdown checklist progress"
+        prog="checkmarks", description="Track progress in markdown checklists."
     )
     parser.add_argument(
-        "markdown_file", type=str, help="Path to your checklist .md file"
+        "--config",
+        type=Path,
+        help="Path to config JSON (defaults to ~/.checkmarks_config.json)",
     )
-    args = parser.parse_args()
 
-    md_path: Path = Path(args.markdown_file)
-    if not md_path.exists():
-        print(f"❌ File not found: {md_path}")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    # add
+    p_add = subparsers.add_parser("add", help="Add a markdown file to tracking list")
+    p_add.add_argument("file", help="Markdown file to add")
+
+    # remove
+    p_rm = subparsers.add_parser(
+        "remove", help="Remove a markdown file from tracking list"
+    )
+    p_rm.add_argument("file", help="Markdown file to remove")
+
+    # list
+    subparsers.add_parser("list", help="List tracked markdown files")
+
+    # parse
+    p_parse = subparsers.add_parser(
+        "parse", help="Parse a markdown file and show progress"
+    )
+    p_parse.add_argument("file", help="Markdown file to parse")
+
+    # dashboard
+    subparsers.add_parser(
+        "dashboard", help="Show summary dashboard for all tracked files"
+    )
+    return parser
+
+
+def cmd_parse(file: Path) -> None:
+    title = parse_markdown_title(file)
+    completed, total = parse_markdown_tasks(file)
+    print(f"{title}")  # noqa: T201
+    print(_ascii_bar(completed, total))  # noqa: T201
+
+
+def cmd_dashboard(mgr: ChecklistManager) -> None:
+    stats = mgr.stats()
+    if not stats:
+        print(
+            "No files tracked yet. Use 'checkmarks add <file.md>' first."
+        )  # noqa: T201
         return
 
-    done, total, title = parse_checklist(md_path)
-    show_progress(done, total, title)
+    # find longest title width
+    max_title = max(len(s.title) for s in stats)
+    for s in stats:
+        bar = _ascii_bar(s.completed, s.total)
+        print(f"{s.title.ljust(max_title)}  {bar}")  # noqa: T201
 
 
-if __name__ == "__main__":
-    main()
+def main(argv: list[str] | None = None) -> NoReturn:  # noqa: D401
+    """CLI dispatch."""
+    parser = _build_parser()
+    args = parser.parse_args(argv)
+
+    mgr = ChecklistManager(config_path=args.config)
+
+    if args.command == "add":
+        mgr.add(args.file)
+
+    elif args.command == "remove":
+        mgr.remove(args.file)
+
+    elif args.command == "list":
+        for p in mgr.list_paths():
+            print(p)  # noqa: T201
+
+    elif args.command == "parse":
+        cmd_parse(Path(args.file))
+
+    elif args.command == "dashboard":
+        cmd_dashboard(mgr)
+
+    else:  # pragma: no cover
+        parser.error("Unhandled command: %s" % args.command)
