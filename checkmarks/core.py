@@ -23,14 +23,14 @@ __all__ = [
 # Pure parsing helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
-TASK_RE = re.compile(r"^\\s*[-*]\\s*\\[(x|X| )]", re.ASCII)
-TITLE_RE = re.compile(r"^\\s*#\\s+(.+)$")
+TASK_RE = re.compile(r"^\s*[-*]\s*\[(x|X| )]", re.ASCII)
+TITLE_RE = re.compile(r"^\s*#\s+(.+)$")
 
 
 def parse_markdown_tasks(file_path: str | Path) -> Tuple[int, int]:
     """Return *(completed, total)* tasks counted in a Markdown file.
 
-    We look for GitHub-style task list markers:
+    We look for GitHub‑style task list markers:
     ``- [ ]`` and ``- [x]`` (or ``*`` bullets). Leading whitespace is ignored.
     """
 
@@ -109,15 +109,36 @@ class ChecklistManager:
     # persistence helpers
     # ---------------------------------------------------------------------
     def _load(self) -> None:
+        """Load JSON config and ensure we end up with a dict that has a *lists* key.
+
+        Handles three edge‑cases gracefully:
+        1. **Legacy schema** – the file is a bare JSON *list* of paths.
+        2. **Missing key** – JSON is a dict without "lists".
+        3. **Corrupted JSON** – fall back to empty list.
+        """
         if self.config_path.is_file():
             try:
-                self._data = json.loads(self.config_path.read_text())
+                data = json.loads(self.config_path.read_text())
+                # v0 schema: a bare list → wrap into a dict
+                if isinstance(data, list):
+                    data = {"lists": data}
+                # future‑proof: ensure a proper key with list value
+                if not isinstance(data, dict):
+                    data = {}
+                if "lists" not in data or not isinstance(data["lists"], list):
+                    data["lists"] = []
+                self._data = data
+                return
             except json.JSONDecodeError:
-                self._data = {"lists": []}
-        else:
-            self._data = {"lists": []}
+                # corrupted file → start fresh (we could also warn/log)
+                pass
+        # default fresh config
+        self._data = {"lists": []}
 
     def _save(self) -> None:
+        self.config_path.write_text(json.dumps(self._data, indent=2))
+
+        # ---------------------------------------------------------------------(self) -> None:
         self.config_path.write_text(json.dumps(self._data, indent=2))
 
     # ---------------------------------------------------------------------
@@ -138,6 +159,6 @@ class ChecklistManager:
     def list_paths(self) -> List[str]:
         return self._data["lists"]
 
-    # convenience pass-throughs ------------------------------------------------
+    # convenience pass‑throughs ------------------------------------------------
     def stats(self) -> List[ChecklistStat]:
         return build_stats(self.list_paths())
